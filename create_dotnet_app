@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+if [ $# -lt 1 ] || [ $1 == "-h" ] || [ $1 == "--help" ]; then
+    echo "Usage: $0 <Name> [directory=./]"
+    exit 0
+fi
+
+output_dir="./"
+
+if [ $# -gt 1 ]; then
+    output_dir="$2"
+fi
+
+mkdir -p "$output_dir"
+current_dir=$(pwd)
+cd "$output_dir"
+dotnet new console -o "$1"
+cd "$current_dir"
+project_dir="$output_dir/$1"
+if [ -f "$project_dir/Program.cs" ]; then
+    rm -f "$project_dir/Program.cs"
+fi
+echo -e "using System;\n\nnamespace $1\n{\n    class Application\n    {\n        static int Main(string[] args)\n        {\n            if(args.Length < 1)\n            {\n                /*Print usage*/\n                System.Console.WriteLine(\"Usage: {0} [OPTIONS]\", Environment.GetCommandLineArgs()[0]);\n                return 0;\n            }\n            //Otherwise run program\n\n            return 0;\n        }\n    }\n}\n" > "$project_dir/Application.cs"
+
+echo "Project created to $project_dir"
