@@ -1,6 +1,21 @@
 # LinuxDotnet
 ### Tools and solutions for using dotnet on linux and embedded linux
 
-# Tools
-1. create_dotnet_app bash script
+To create a new dotnet console application just use `./create_dotnet_app`
 
+# Tools
+### create_dotnet_app [bash]
+Location: ./tools/create_dotnet_app
+```
+Usage: ./create_dotnet_app <Name> [directory=./]
+Creates a new console application. It generates builder and runner scripts as well, that can be called from anywhere.
+```
+#### Example
+```
+cd $HOME
+git clone git@github.com:balintt21/LinuxDotnet.git
+mkdir /home/<user>/dotnet_apps
+./LinuxDotnet/create_dotnet_app Example /home/<user>/dotnet_apps
+./dotnet_apps/build_release
+./dotnet_apps/run_release [args]*
+```
