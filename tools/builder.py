@@ -244,6 +244,7 @@ def print_help():
             "\t-n, --native - Builds (AOT) native application (MAY require [SYSROOT_DIR])\n" \
             "\t-s, --sysroot - Sysroot for native cross compilation\n" \
             "\t                !! Required for cross-compilation when using --native option !!\n" \
+            "\t-i, --install <DIR> - Install published application to the given directory\n" \
             "\nPossible values for <BUILD_OPTION> are the following:\n"
     build_options_str = ""
     for bopt in BUILD_OPTIONS.keys():
