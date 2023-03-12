@@ -69,7 +69,7 @@ class BuildPlatform(Enum):
 
 
 class Builder:
-    def __init__(self, is_native_build = False, sysroot = "") -> None:
+    def __init__(self, is_native_build = False, sysroot = "", install_dir = "") -> None:
         self.version = "1.0.0"
         self.is_valid = False
         self.root = os.path.dirname(sys.argv[0])
@@ -80,6 +80,7 @@ class Builder:
         self.project_xml = None
         self.is_native_build = is_native_build
         self.sysroot = sysroot
+        self.install_dir = install_dir
         self.publish_dir = ""
         self.logger = Logger()
 
@@ -123,6 +124,11 @@ class Builder:
                         self.logger.log_error("invalid .csproj file! missing PropertyGroup")
                     with open (self.project_file, "wb") as file:
                         self.project_xml.write(file)
+
+                    if self.install_dir and not os.path.isdir(self.install_dir):
+                        if subprocess.run(["mkdir", "-p", self.install_dir], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode != 0:
+                            self.logger.log_error(f"failed to create install directory: '{self.install_dir}'")
+                            return
 
                     self.is_valid = True
                 except:
@@ -172,6 +178,10 @@ class Builder:
 
             if returncode != 0:
                 self.logger.log_error("build failed!")
+            elif self.install_dir and self.publish_dir:
+                self.logger.log_info(f"installing to {self.install_dir}")
+                if subprocess.run(["cp", "-af", os.path.join(self.publish_dir, "."), self.install_dir]).returncode != 0:
+                    self.logger.log_error(f"failed to install application to {self.install_dir}")
             return returncode == 0
             
 
@@ -227,36 +237,48 @@ BUILD_OPTIONS = { "release" : build_release
 
 
 def print_help():
-    usage = f"Usage: {sys.argv[0]} [OPTIONS] <BUILD_OPTION> [SYSROOT_DIR]\nOPTIONS:\n\t-h, --help - Prints this help message\n\t-n, --native - Builds (AOT) native application (MAY require [SYSROOT_DIR])\n\n"
-    usage += "Possible values for <BUILD_OPTION> are the following:\n"
+    usage = f"Usage: {sys.argv[0]} [OPTIONS] <BUILD_OPTION>\n"
+    usage += "Description: Can build and publish self-contained and native dotnet application to several platforms\n\tself-contained: Deployable anywhere without dotnet-runtime\n\tnative: AOT(Ahead of Time/binary) Built into one executable and portable binary file\n"
+    usage += "OPTIONS:\n" \
+            "\t-h, --help - Prints this help message\n" \
+            "\t-n, --native - Builds (AOT) native application (MAY require [SYSROOT_DIR])\n" \
+            "\t-s, --sysroot - Sysroot for native cross compilation\n" \
+            "\t                !! Required for cross-compilation when using --native option !!\n" \
+            "\nPossible values for <BUILD_OPTION> are the following:\n"
     build_options_str = ""
     for bopt in BUILD_OPTIONS.keys():
         build_options_str += f"\t{bopt}\n"
     usage += build_options_str
-    usage += "\n[SYSROOT_DIR] is optional for HOST but note that any cross platform build option that contains ':' may require [SYSROOT_DIR]!\n"
+    usage += "\nNOTE: Any cross platform build option used with '--native' option MAY require --sysroot <DIR>!"
     print(usage)
 
 
 
 def main():
-    if len(sys.argv) < 2 or ("-h" in sys.argv) or ("--help" in sys.argv):
-        print_help()
-        return 0
+    arg_parser = argparse.ArgumentParser(add_help=False)
+    arg_parser.add_argument("-h", "--help", action="store_true")
+    arg_parser.add_argument("-n", "--native", action="store_true")
+    arg_parser.add_argument("-s", "--sysroot", type=str, action="store", default="", nargs="?")
+    arg_parser.add_argument("-i", "--install", type=str, action="store", default="", nargs="?")
+    options, arguments = arg_parser.parse_known_args()
 
-    options = ["-h", "--help", "-n", "--native"]
-    build_opt_idx = 1
-    for i in range(len(sys.argv)):
-        if i > 0:
-            if sys.argv[i] in options:
-                build_opt_idx += 1
-            else:
-                break
+    if len(sys.argv) < 2 or options.help:
+        print_help()
+        return 0    
     
-    build_option = sys.argv[build_opt_idx]
+    build_option = arguments[0]
+    sysroot = ""
+    install_dir = ""
     is_native_build = ("-n" in sys.argv) or ("--native" in sys.argv)
 
+    if options.install:
+        install_dir = options.install
+
+    if options.sysroot:
+        sysroot = options.sysroot
+        
     if build_option in BUILD_OPTIONS:
-        builder = Builder(is_native_build, sys.argv[build_opt_idx+1] if (len(sys.argv) > (build_opt_idx+1)) else "" )
+        builder = Builder(is_native_build, sysroot, install_dir)
         if builder:
             if BUILD_OPTIONS[build_option](builder):
                 pass
